@@ -1,0 +1,249 @@
+/* 
+        get date and time based on country code like 
+        http://localhost:3000?countery=IN
+*/
+
+{
+  "name": "Current timing",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "7791c3ab-3541-4f4e-bfb9-c2c398a84106",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -144,
+        0
+      ],
+      "id": "8a892134-7cfa-40cc-aaad-38948171c444",
+      "name": "Webhook",
+      "webhookId": "7791c3ab-3541-4f4e-bfb9-c2c398a84106"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"country\": \"{{ $json.country }}\",\n  \"timezone\": \"{{ $json.timezone }}\",\n  \"currentTime\": \"{{ $json.currentTime }}\"\n} ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        592,
+        -16
+      ],
+      "id": "dc1d40de-8e5c-404e-9bb0-3c2df5a01a7a",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// input example: \"IN\" or \"US\"\nconst countryCode = String(\n  $input.first().json.query.countery || ''\n).toUpperCase();\n\n// country → timezone map\nconst countryToTimezone = {\n  // Asia\n  IN: 'Asia/Kolkata',\n  PK: 'Asia/Karachi',\n  BD: 'Asia/Dhaka',\n  NP: 'Asia/Kathmandu',\n  LK: 'Asia/Colombo',\n  CN: 'Asia/Shanghai',\n  JP: 'Asia/Tokyo',\n  KR: 'Asia/Seoul',\n  TH: 'Asia/Bangkok',\n  SG: 'Asia/Singapore',\n  MY: 'Asia/Kuala_Lumpur',\n  ID: 'Asia/Jakarta',\n  PH: 'Asia/Manila',\n  VN: 'Asia/Ho_Chi_Minh',\n  AE: 'Asia/Dubai',\n  SA: 'Asia/Riyadh',\n  IL: 'Asia/Jerusalem',\n  IR: 'Asia/Tehran',\n  IQ: 'Asia/Baghdad',\n  AF: 'Asia/Kabul',\n\n  // Europe\n  UK: 'Europe/London',\n  FR: 'Europe/Paris',\n  DE: 'Europe/Berlin',\n  IT: 'Europe/Rome',\n  ES: 'Europe/Madrid',\n  PT: 'Europe/Lisbon',\n  NL: 'Europe/Amsterdam',\n  BE: 'Europe/Brussels',\n  CH: 'Europe/Zurich',\n  AT: 'Europe/Vienna',\n  SE: 'Europe/Stockholm',\n  NO: 'Europe/Oslo',\n  DK: 'Europe/Copenhagen',\n  FI: 'Europe/Helsinki',\n  PL: 'Europe/Warsaw',\n  CZ: 'Europe/Prague',\n  HU: 'Europe/Budapest',\n  RO: 'Europe/Bucharest',\n  GR: 'Europe/Athens',\n  RU: 'Europe/Moscow',\n  UA: 'Europe/Kyiv',\n\n  // North America\n  US: 'America/New_York',\n  CA: 'America/Toronto',\n  MX: 'America/Mexico_City',\n\n  // South America\n  BR: 'America/Sao_Paulo',\n  AR: 'America/Argentina/Buenos_Aires',\n  CL: 'America/Santiago',\n  CO: 'America/Bogota',\n  PE: 'America/Lima',\n  VE: 'America/Caracas',\n\n  // Africa\n  ZA: 'Africa/Johannesburg',\n  EG: 'Africa/Cairo',\n  NG: 'Africa/Lagos',\n  KE: 'Africa/Nairobi',\n  GH: 'Africa/Accra',\n  MA: 'Africa/Casablanca',\n  TZ: 'Africa/Dar_es_Salaam',\n\n  // Oceania\n  AU: 'Australia/Sydney',\n  NZ: 'Pacific/Auckland',\n  FJ: 'Pacific/Fiji'\n};\n\nif($input.first().json.query.countery in countryToTimezone){\n  const timezone = countryToTimezone[countryCode] || 'IN';\n\n  const now = new Date();\n\n  const formatter = new Intl.DateTimeFormat('en-US', {\n      timeZone: timezone,\n      year: 'numeric',\n      month: '2-digit',\n      day: '2-digit',\n      hour: '2-digit',\n      minute: '2-digit',\n      second: '2-digit',\n      hour12: true\n    });\n    \n    return [\n      {\n        json: {\n          status: true,\n          country: countryCode,\n          timezone,\n          currentTime: formatter.format(now)\n        }\n      }\n    ];\n} else {\n  return [{json: {status: false}}]\n}\n\n// safe lookup with fallback\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        48,
+        0
+      ],
+      "id": "57105ac9-f2d7-4978-bb8f-f3c31ba892b7",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b5690eda-946a-4ccc-b7e3-051145ef05b1",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        256,
+        0
+      ],
+      "id": "e831cf63-ddaa-440e-a803-06fbe3ae5f08",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=##country name is {{ $('Webhook').item.json.query.countery }}\n\n# you are a agent to find countery code\ntake out the countery code like \n\nfor \nindia - IN\nunited states - US\n\n# output format is :- \nreturn only word like IN, US, .. \n\n## if the input is not an country so return IN",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        80,
+        288
+      ],
+      "id": "9647ce0c-1b9c-4a3c-8dd8-c6878dc5ebc7",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "groq/compound-mini",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -96,
+        480
+      ],
+      "id": "5f4fda3d-6b71-43b5-8cbe-c58787bf6c35",
+      "name": "Groq",
+      "credentials": {
+        "groqApi": {
+          "id": "0CH7h5Wad7letgKF",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://tanish20000.app.n8n.cloud/webhook/7791c3ab-3541-4f4e-bfb9-c2c398a84106?countery={{ $json.output }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        432,
+        288
+      ],
+      "id": "8aecf1fd-da7d-47c2-9f13-ca5b3239612e",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $now }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        96,
+        496
+      ],
+      "id": "2e47c03a-8b01-4486-a7b5-b03072debbdf",
+      "name": "Simple Memory"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "6442c271-be57-4688-b49e-6cfbbcc32ed3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a8cbbacaadfd4b5798733863ec846b16c04600925a9fbe3c5966798329984dca"
+  },
+  "id": "S85NUMd5YyLtoSlW",
+  "tags": []
+}
