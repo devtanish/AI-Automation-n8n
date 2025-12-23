@@ -1,5 +1,4 @@
 {
-  "name": "Authentation",
   "nodes": [
     {
       "parameters": {
@@ -240,14 +239,14 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "{\n  \"status\": \"Logined Sucessfully\"\n}",
+        "responseBody": "={\n  \"status\": \"Logined Sucessfully\",\n  \"JWT\": \"{{ $json.token }}\"\n} ",
         "options": {}
       },
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        1056,
-        -160
+        1280,
+        -192
       ],
       "id": "9c111487-2dbf-41fb-b87c-0c9c9be13c62",
       "name": "Respond to Webhook2"
@@ -527,9 +526,29 @@
       ],
       "id": "f3635ceb-acf8-4b74-a99a-37c1bc00f26d",
       "name": "Respond to Webhook5"
+    },
+    {
+      "parameters": {
+        "useJson": true,
+        "claimsJson": "={\n  \"username\": \"{{ $('Webhook').item.json.body.username }}\",\n  \"email\":  \"{{ $('Webhook').item.json.body.email }}\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.jwt",
+      "typeVersion": 1,
+      "position": [
+        1056,
+        -192
+      ],
+      "id": "1d148b3a-6f82-468d-b0f9-871807d16663",
+      "name": "JWT",
+      "credentials": {
+        "jwtAuth": {
+          "id": "3BJ5yg7ghRAuF1vJ",
+          "name": "JWT Auth account"
+        }
+      }
     }
   ],
-  "pinData": {},
   "connections": {
     "Webhook1": {
       "main": [
@@ -598,6 +617,11 @@
         ]
       ]
     },
+    "Respond to Webhook2": {
+      "main": [
+        []
+      ]
+    },
     "Code in JavaScript1": {
       "main": [
         [
@@ -613,7 +637,7 @@
       "main": [
         [
           {
-            "node": "Respond to Webhook2",
+            "node": "JWT",
             "type": "main",
             "index": 0
           }
@@ -678,17 +702,6 @@
         ]
       ]
     },
-    "Get row(s) in sheet2": {
-      "main": [
-        [
-          {
-            "node": "If1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "If1": {
       "main": [
         [
@@ -706,17 +719,33 @@
           }
         ]
       ]
+    },
+    "Get row(s) in sheet2": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JWT": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "active": false,
-  "settings": {
-    "executionOrder": "v1"
-  },
-  "versionId": "00efc408-752f-48c6-b4d7-644a55266a37",
+  "pinData": {},
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "7a73b73b7c67603c0c6c190785872b8d2925f4242711caa48fe90a59871cc564"
-  },
-  "id": "RSMPXssR9AJ7wtx0",
-  "tags": []
+  }
 }
