@@ -1,0 +1,254 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {},
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -352,
+        32
+      ],
+      "id": "2014f831-193c-40e8-9087-66f2605666bb",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "rkPnxHZKn04t1lQG",
+          "name": "tanish7079vish@gmail.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "binaryPropertyName": "attachment_0",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -128,
+        32
+      ],
+      "id": "a959ecd0-3adc-47ef-b7c3-698d4c4b06cc",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst tableName = $('Gmail Trigger').first().json.subject.toLowerCase()\n  .replace(/\\s+/g, '_')\n  .replace(/[^a-z0-9_]/g, '');\n\n// Extract column names — EXCLUDE SNo\nconst firstItem = items[0].json;\nconst columns = Object.keys(firstItem).filter(col => col !== 'SNo');\n\n// Create table SQL — add id UUID column first\nconst columnDefs = [\n  `\"id\" UUID DEFAULT gen_random_uuid() PRIMARY KEY`,\n  ...columns.map(col => `\"${col}\" TEXT`)\n].join(',\\n  ');\n\nconst createTableSQL = `\nCREATE TABLE IF NOT EXISTS ${tableName} (\n  ${columnDefs}\n);`.trim();\n\n// Create INSERT SQL — SNo excluded, id is auto generated\nconst insertRows = items\n  .filter(item => {\n    // Skip empty/null rows\n    return columns.some(col => {\n      const val = item.json[col];\n      return val !== null && val !== undefined && val !== '';\n    });\n  })\n  .map(item => {\n    const values = columns.map(col => {\n      const val = item.json[col];\n      if (val === null || val === undefined || val === '') return 'NULL';\n      return `'${String(val).replace(/'/g, \"''\")}'`;\n    }).join(', ');\n    return `(${values})`;\n  }).join(',\\n');\n\n// INSERT only data columns (id auto generated, SNo excluded)\nconst insertSQL = `\nINSERT INTO ${tableName} \n(${columns.map(c => `\"${c}\"`).join(', ')})\nVALUES\n${insertRows};`.trim();\n\nconst fullSQL = createTableSQL + '\\n\\n' + insertSQL;\n\nreturn [{\n  json: {\n    fullSQL,\n    createTableSQL,\n    insertSQL,\n    tableName,\n    totalRows: items.length\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        -112
+      ],
+      "id": "f7865f41-d8c5-4c78-93e8-463850cd22b4",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "{{ $json.createTableSQL }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        384,
+        -112
+      ],
+      "id": "654808a4-ba4a-4a36-b1f6-61d6520cb7b7",
+      "name": "execute_sql",
+      "credentials": {
+        "postgres": {
+          "id": "Pbp8bArwGtZ6paK0",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        848,
+        16
+      ],
+      "id": "0986b929-f677-452f-aa06-8ca0c44870b9",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{}]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        -112
+      ],
+      "id": "17d4fec6-5ca4-42ba-bc9c-eedbfa7ad533",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "maxItems": 1000
+      },
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        1056,
+        16
+      ],
+      "id": "f24fea08-2bd4-43b1-855d-fe60535868fd",
+      "name": "Limit"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst tableName = $('Gmail Trigger')\n  .first().json.subject\n  .toLowerCase()\n  .replace(/\\s+/g, '_')\n  .replace(/[^a-z0-9_]/g, '');\n\n// Get clean columns from Extract from File — EXCLUDE SNo\nconst extractedColumns = Object.keys($('Extract from File').first().json)\n  .filter(col => col !== 'SNo');\n\n// Build VALUES — SKIP rows where all values are null/empty\nconst values = items\n  .filter(item => {\n    return extractedColumns.some(col => {\n      const val = item.json[col];\n      return val !== null && val !== undefined && val !== '';\n    });\n  })\n  .map(item => {\n    const rowValues = extractedColumns.map(col => {\n      const val = item.json[col];\n      if (val === null || val === undefined || val === '') return 'NULL';\n      if (!isNaN(val) && val !== '') return Number(val);\n      return `'${String(val).replace(/'/g, \"''\")}'`;\n    });\n    return `(${rowValues.join(', ')})`;\n  }).join(',\\n');\n\n// Final INSERT query\nconst insertQuery = `\nINSERT INTO \"${tableName}\" \n(${extractedColumns.map(c => `\"${c}\"`).join(', ')})\nVALUES\n${values};\n`.trim();\n\nreturn [{\n  json: {\n    tableName,\n    insertQuery,\n    totalRows: items.length,\n    columns: extractedColumns\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        16
+      ],
+      "id": "11e76762-2ec8-4a0b-9c8f-bf591c81ac8d",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "{{ $json.insertQuery }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1472,
+        16
+      ],
+      "id": "4aa6d7e6-6f95-419e-bfcc-666fac2cf421",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "Pbp8bArwGtZ6paK0",
+          "name": "Postgres account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "execute_sql",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "execute_sql": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7a73b73b7c67603c0c6c190785872b8d2925f4242711caa48fe90a59871cc564"
+  }
+}
